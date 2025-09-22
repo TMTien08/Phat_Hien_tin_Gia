@@ -15,11 +15,10 @@ user_text = st.text_area("Nhập nội dung bài báo:")
 if st.button("Kiểm tra"):
     if user_text.strip():
         
-        
         nlp = spacy.load('en_core_web_sm') 
         def clean_data(text: str) -> str: 
-            user_text = user_text.lower()
-            doc = nlp(user_text) 
+            text = text.lower()
+            doc = nlp(text) 
             return " ".join([
                 token.text if token.like_url else token.lemma_ 
                 for token in doc 
