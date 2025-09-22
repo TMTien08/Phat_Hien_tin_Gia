@@ -1,7 +1,8 @@
 scikit-learn
 streamlit
 joblib
-spacy
+
+
 
 
 
