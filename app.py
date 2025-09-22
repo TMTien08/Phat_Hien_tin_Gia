@@ -1,11 +1,12 @@
 import streamlit as st
 import joblib
 import spacy
+import en_core_web_sm
+nlp = en_core_web_sm.load()
 
 # --- Load model và vectorizer ---
 vectorizer = joblib.load("vectorizer.pkl")
 model = joblib.load("logistic_regression_model.pkl")
-nlp = spacy.load('en_core_web_sm')  # Load 1 lần
 
 def clean_data(text: str) -> str:
     text = text.lower()
@@ -28,4 +29,5 @@ if st.button("Kiểm tra"):
         st.success("Kết quả: " + ("FAKE" if prediction == 1 else "REAL"))
     else:
         st.warning("Vui lòng nhập nội dung!")
+
 
