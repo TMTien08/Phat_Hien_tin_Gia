@@ -8,8 +8,10 @@ model = joblib.load("logistic_regression_model.pkl")
 try:
     nlp = spacy.load("en_core_web_sm")
 except OSError:
-    import en_core_web_sm
-    nlp = en_core_web_sm.load()
+    from spacy.cli import download
+    download("en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm")
+
 
 def clean_data(text: str) -> str:
     text = text.lower()
@@ -32,6 +34,7 @@ if st.button("Kiểm tra"):
         st.success("Kết quả: " + ("FAKE" if prediction == 1 else "REAL"))
     else:
         st.warning("Vui lòng nhập nội dung!")
+
 
 
 
