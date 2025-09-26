@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 nltk.download('stopwords')
 nltk.download('wordnet')
 
+# ==================== Background & Style ====================
 page_bg = """
 <style>
 [data-testid="stAppViewContainer"] {
@@ -49,6 +50,7 @@ div.stButton > button:hover {
 """
 st.markdown(page_bg, unsafe_allow_html=True)
 
+# ==================== Load model & vectorizer ====================
 vectorizer = joblib.load("vectorizer.pkl")
 model = joblib.load("Decision_Tree_model.pkl")
 
@@ -60,79 +62,164 @@ def preprocess(text):
     tokens = [lemmatizer.lemmatize(word) for word in tokens if word.lower() not in stop_words]
     return ' '.join(tokens)
 
-st.markdown("<h1>📰 Fake News Detector</h1>", unsafe_allow_html=True)
+# ==================== Session State ====================
+if "history" not in st.session_state:
+    st.session_state.history = []  # lưu [(text, prediction)]
 
-user_text = st.text_area("Nhập nội dung bài báo:")
+# ==================== Tabs ====================
+tab1, tab2 = st.tabs(["📰 Kiểm tra", "📜 Lịch sử"])
 
-col1, col2, col3 = st.columns([1,1,1])
-with col2:
-    check_btn = st.button("Kiểm tra", use_container_width=True)
+# -------------------- Tab 1: Kiểm tra --------------------
+with tab1:
+    st.markdown("<h1>📰 Fake News Detector</h1>", unsafe_allow_html=True)
+    user_text = st.text_area("Nhập nội dung bài báo:")
 
-if check_btn:
-    if user_text.strip():
-        user_text = user_text.lower()
-        user_text = re.sub(r'[^a-zA-Z]', ' ', user_text)
-        clean_user_text = preprocess(user_text)
+    col1, col2, col3 = st.columns([1,1,1])
+    with col2:
+        check_btn = st.button("Kiểm tra", use_container_width=True)
 
-        X_new = vectorizer.transform([clean_user_text])
-        prediction = model.predict(X_new)[0]
+    if check_btn:
+        if user_text.strip():
+            user_text_clean = re.sub(r'[^a-zA-Z]', ' ', user_text.lower())
+            clean_user_text = preprocess(user_text_clean)
 
-        if prediction == 1:
-            result_text = "REAL"
-            bg_color = "#4CAF50" 
+            X_new = vectorizer.transform([clean_user_text])
+            prediction = model.predict(X_new)[0]
+
+            # Lưu vào lịch sử
+            st.session_state.history.append((user_text, prediction))
+
+            # Hiển thị kết quả
+            if prediction == 1:
+                result_text = "REAL"
+                bg_color = "#4CAF50" 
+            else:
+                result_text = "FAKE"
+                bg_color = "#FF4B4B"  
+
+            st.markdown(
+                f"""
+                <div style="
+                    text-align: center;
+                    border: 2px solid {bg_color};
+                    padding: 10px;
+                    border-radius: 10px;
+                    background-color: {bg_color};
+                    width: 60%;
+                    margin: 0 auto;
+                    font-size: 20px;
+                    font-weight: bold;
+                    color: white;">
+                    {result_text}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            # -------------------- Biểu đồ lý do FAKE/REAL --------------------
+            # Lấy độ quan trọng từ Decision Tree cho các từ xuất hiện trong bài
+            from sklearn.tree import _tree
+            import numpy as np
+            st.markdown("<div style='height:25px;'></div>", unsafe_allow_html=True)
+            def get_word_contribution(model, vectorizer, text_vector):
+                fi = model.feature_importances_  # độ quan trọng
+                words = vectorizer.get_feature_names_out()
+                text_indices = text_vector.nonzero()[1]
+                contrib_words = [(words[i], fi[i]) for i in text_indices]
+                contrib_words = sorted(contrib_words, key=lambda x: x[1], reverse=True)
+                return contrib_words[:5]  # top 10 từ quan trọng
+
+            word_contrib = get_word_contribution(model, vectorizer, X_new)
+            if word_contrib:
+                words, importances = zip(*word_contrib)
+                plt.figure(figsize=(10,6))
+                plt.barh(words, importances, color=bg_color)
+                plt.xlabel("Độ quan trọng")
+                plt.title("Top từ ảnh hưởng tới dự đoán " + result_text)
+                plt.gca().invert_yaxis()
+                plt.tight_layout()
+                st.pyplot(plt)
+
+
+            # Biểu đồ từ xuất hiện nhiều nhất
+            st.markdown("<div style='height:25px;'></div>", unsafe_allow_html=True)
+            word_counter = Counter(clean_user_text.split())
+            top_words = word_counter.most_common(20)
+            words = [w for w, _ in top_words]
+            counts = [c for _, c in top_words]
+
+            plt.figure(figsize=(10, 6))
+            plt.bar(words, counts, color= bg_color)
+            plt.xticks(rotation=45, ha='right')
+            plt.title("Top 20 từ xuất hiện nhiều nhất")
+            plt.ylabel("Tần số")
+            plt.tight_layout()
+            st.pyplot(plt)
+
+            
+
         else:
-            result_text = "FAKE"
-            bg_color = "#FF4B4B"  
+            st.markdown(
+                """
+                <div style="
+                    text-align: center;
+                    border: 2px solid orange;
+                    padding: 10px;
+                    border-radius: 10px;
+                    background-color: orange;
+                    width: 60%;
+                    margin: 0 auto;
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: white;">
+                    Vui lòng nhập nội dung!
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
-        st.markdown(
-            f"""
-            <div style="
-                text-align: center;
-                border: 2px solid {bg_color};
-                padding: 10px;
-                border-radius: 10px;
-                background-color: {bg_color};
-                width: 60%;
-                margin: 0 auto;
-                font-size: 20px;
-                font-weight: bold;
-                color: white;">
-                {result_text}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
 
-        st.markdown("<div style='height:25px;'></div>", unsafe_allow_html=True)
-
-        word_counter = Counter(clean_user_text.split())
-        top_words = word_counter.most_common(20)
-        words = [w for w, _ in top_words]
-        counts = [c for _, c in top_words]
-
-        plt.figure(figsize=(10, 6))
-        plt.bar(words, counts, color='green')
-        plt.xticks(rotation=45, ha='right')
-        plt.title("Top 20 từ xuất hiện nhiều nhất")
-        plt.ylabel("Tần số")
-        plt.tight_layout()
-        st.pyplot(plt)
-
+# -------------------- Tab 2: Lịch sử --------------------
+with tab2:
+    st.markdown("<h1>📜 Lịch sử kiểm tra</h1>", unsafe_allow_html=True)
+    if st.session_state.history:
+        for i, (text, pred) in enumerate(reversed(st.session_state.history), 1):
+            pred_text = "REAL" if pred == 1 else "FAKE"
+            color = "#4CAF50" if pred == 1 else "#FF4B4B"
+            st.markdown(
+                f"""
+                <div style="
+                    border: 2px solid {color};
+                    border-radius: 8px;
+                    padding: 10px;
+                    margin-bottom: 10px;
+                    background-color: rgba(0, 0, 0, 0.5);
+                    color: white;
+                    width: 100%;
+                    height: 200px;
+                    overflow-y: auto;
+                    margin-left: auto;
+                    margin-right: auto;">
+                    <b><span style="color:{color}">Bài báo #{i}:</span></b> {text}<br>
+                    <b>Kết quả:</b> <span style="color:{color}; font-weight:bold;">{pred_text}</span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
     else:
         st.markdown(
             """
             <div style="
                 text-align: center;
-                border: 2px solid orange;
+                border: 2px solid gray;
                 padding: 10px;
                 border-radius: 10px;
-                background-color: orange;
+                background-color: gray;
                 width: 60%;
                 margin: 0 auto;
                 font-size: 18px;
                 font-weight: bold;
                 color: white;">
-                Vui lòng nhập nội dung!
+                Chưa có lịch sử nào!
             </div>
             """,
             unsafe_allow_html=True
