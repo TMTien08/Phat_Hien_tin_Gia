@@ -192,7 +192,7 @@ with tab2:
                     border-radius: 8px;
                     padding: 10px;
                     margin-bottom: 10px;
-                    background-color: rgba(0, 0, 0, 0.5);
+                    background-color: rgba(0, 0, 0, 0.3);
                     color: white;
                     width: 100%;
                     height: 200px;
@@ -224,3 +224,4 @@ with tab2:
             """,
             unsafe_allow_html=True
         )
+
